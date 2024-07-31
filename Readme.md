@@ -95,16 +95,10 @@ func TestPersonPost(t *testing.T) {
 		RequestMods: []goe2e.RequestModifier{
 			goe2e.WithContentType(goe2e.ContentHeaderJSON),
 		},
-		PreFunc: func(r *goe2e.RequestHandler) error {
-			return nil
-		},
 		PreTestStatements: []goe2e.TestStatement{
 			{Description: "request not nil", Statement: func(t *testing.T, r *goe2e.RequestHandler) {
 				assert.NotNil(t, r.Request())
 			}},
-		},
-		PostFunc: func(r *goe2e.RequestHandler) error {
-			return nil
 		},
 		PostTestStatements: []goe2e.TestStatement{
 			{Description: "body not nil", Statement: func(t *testing.T, r *goe2e.RequestHandler) {
@@ -128,13 +122,11 @@ Alternatively [testing.M](https://pkg.go.dev/testing#hdr-Main) provides a space 
 That's it!
 
 
-## Limitations & Future Plans
+## Limitations
 
-- Only build for the unit testing environment, with plans to adapt it for use in application code.
+- Only build for the unit testing environment, might adapt it for use in application code.
 
 - No built-in solution for logging response times yet
-
-- No convenience solution for "environments" yet (passing values between test contexts)
 
 - Only has functions to deal with JSON encoding for now
 
@@ -142,6 +134,6 @@ That's it!
 
 - No built-in solution for run comparison/logging yet
 
-- Missing many convenience functions (Auth Header, JSON Un-/Marshalling)
+- Missing convenience functions (Auth Header)
 
 - Implementation is subject to change 
