@@ -2,8 +2,9 @@ package goe2e_test
 
 import (
 	"encoding/json"
-	goe2e "goe2e/pkg"
 	"testing"
+
+	goe2e "github.com/J-Bockhofer/goe2e/pkg"
 
 	"github.com/stretchr/testify/assert"
 )

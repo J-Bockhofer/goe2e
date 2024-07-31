@@ -2,19 +2,17 @@
 
 Writing server in Go? Write E2E (End-to-End) tests in it, too!
 
-Why use whole application like Pstman, when Grug can just write a little more Go?
-
 Just add a test file to your source or an empty application and get going.
 
 ## How it works
 
-E2E tests work by sending a request to a running application.
+Simply put, E2E tests work by sending a request to a running application.
 
 Unit tests usually have great language tooling while E2E tests need another application like Postman or Insomnia to run.
 
 This proof-of-concept package presents a way to combine the IDE, build pipeline support and relative ease of writing of unit tests with flexible E2E testing.
 
-Yet it is nothing special but a mere convenience wrapper/function adapter around http requests and responses.
+It works as a convenience wrapper/function adapter around http requests and responses.
 
 The whole configuration is based on typed function handles, so you can write your own functions to feed into the testing frame.
 
@@ -77,7 +75,7 @@ import (
 	"net/http"
 	"testing"
 
-	"goe2e"
+	goe2e "github.com/J-Bockhofer/goe2e/pkg"
 
 	"github.com/stretchr/testify/assert"
 )

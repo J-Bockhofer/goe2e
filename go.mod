@@ -1,4 +1,4 @@
-module goe2e
+module github.com/J-Bockhofer/goe2e
 
 go 1.22.3
 

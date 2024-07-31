@@ -1,8 +1,9 @@
 package goe2e_test
 
 import (
-	goe2e "goe2e/pkg"
 	"testing"
+
+	goe2e "github.com/J-Bockhofer/goe2e/pkg"
 
 	"github.com/stretchr/testify/assert"
 )
