@@ -8,8 +8,6 @@ Just add a test file to your source or an empty application and get going.
 
 Simply put, E2E tests work by sending a request to a running application.
 
-Unit tests usually have great language tooling while E2E tests need another application like Postman or Insomnia to run.
-
 This proof-of-concept package presents a way to combine the IDE, build pipeline support and relative ease of writing of unit tests with flexible E2E testing.
 
 It works as a convenience wrapper/function adapter around http requests and responses.
