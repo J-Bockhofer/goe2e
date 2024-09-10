@@ -1,8 +1,11 @@
 package goe2e
 
 import (
+	"log"
+	"log/slog"
 	"net/http"
-	"strings"
+	"net/http/httptrace"
+	"time"
 )
 
 // RequestModifer is used to modify the http.Request.
@@ -30,12 +33,21 @@ func WithContentType(contentType string) RequestModifier {
 	}
 }
 
-// JoinAsRoute is a helper function to join two route components.
-// It assures that they are indeed connected with a "/".
-func JoinAsRoute(base, route string) string {
-	const slash string = "/"
-	if !strings.HasSuffix(base, slash) && !strings.HasPrefix(route, slash) {
-		return base + slash + route
+// WithTimeToFirstByte will send a secondary request to precisely measure the time to first byte.
+func WithTimeToFirstByte() RequestModifier {
+	return func(r *http.Request) error {
+		var start time.Time
+		trace := &httptrace.ClientTrace{
+			GotFirstResponseByte: func() {
+				slog.Info("Time from start to first byte: " + time.Since(start).String())
+			},
+		}
+		tr := r.Clone(httptrace.WithClientTrace(r.Context(), trace))
+		start = time.Now()
+		if _, err := http.DefaultTransport.RoundTrip(tr); err != nil {
+			log.Fatal(err)
+		}
+		slog.Info("Total time: " + time.Since(start).String())
+		return nil
 	}
-	return base + route
 }

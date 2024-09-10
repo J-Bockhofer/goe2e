@@ -121,3 +121,13 @@ func bodyJSONToMap(b []byte) (H, error) {
 	}
 	return bodyMap, nil
 }
+
+// JoinAsRoute is a helper function to join two route components.
+// It assures that they are indeed connected with a "/".
+func JoinAsRoute(base, route string) string {
+	const slash string = "/"
+	if !strings.HasSuffix(base, slash) && !strings.HasPrefix(route, slash) {
+		return base + slash + route
+	}
+	return base + route
+}
