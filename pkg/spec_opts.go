@@ -17,27 +17,27 @@ func WithBody(body []byte) SpecOption {
 	}
 }
 
-// WithUrl sets the request's url.
-func WithUrl(url string) SpecOption {
+// WithURL sets the request's URL.
+func WithURL(url string) SpecOption {
 	return func(rs *Spec) error {
-		rs.Url = url
+		rs.URL = url
 		return nil
 	}
 }
 
-// WithBaseURLFromEnv attempts to build the request's url from a domain name and route.
+// WithBaseURLFromEnv attempts to build the request's URL from a domain name and route.
 // The domain name literal is stored in a map called env, where the urlKey is the key under which it is stored.
 func WithBaseURLFromEnv(env H, urlKey string, route string) SpecOption {
 	return func(rs *Spec) error {
-		baseUrl := ValueInMapByKey(urlKey, env)
-		if baseUrl == nil {
+		baseURL := ValueInMapByKey(urlKey, env)
+		if baseURL == nil {
 			return fmt.Errorf("baseURL not found: key %s not found in env", urlKey)
 		}
-		switch t := baseUrl.(type) {
+		switch t := baseURL.(type) {
 		case string:
-			rs.Url = JoinAsRoute(t, route)
+			rs.URL = JoinAsRoute(t, route)
 		default:
-			return fmt.Errorf("baseURL in env not of type string: %v", baseUrl)
+			return fmt.Errorf("baseURL in env not of type string: %v", baseURL)
 		}
 		return nil
 	}
@@ -97,15 +97,15 @@ func WithSetFromEnv(env H, keymap D) SpecOption {
 // The route should include the domain.
 func WithRouteFromQueryMap(route string, queryMap D) SpecOption {
 	return func(rs *Spec) error {
-		rs.Url = AssembleQuery(route, queryMap)
+		rs.URL = AssembleQuery(route, queryMap)
 		return nil
 	}
 }
 
-// AddQueryFromMap assembles the query string from the given parameter map and takes the Spec.Url as the route.
+// AddQueryFromMap assembles the query string from the given parameter map and takes the Spec.URL as the route.
 func AddQueryFromMap(queryMap D) SpecOption {
 	return func(rs *Spec) error {
-		rs.Url = AssembleQuery(rs.Url, queryMap)
+		rs.URL = AssembleQuery(rs.URL, queryMap)
 		return nil
 	}
 }

@@ -10,7 +10,7 @@ import (
 // Once the request is generated you cant modify it easily.
 type Spec struct {
 	Method  string
-	Url     string
+	URL     string
 	Body    []byte
 	Request *http.Request
 }
@@ -21,7 +21,7 @@ type Spec struct {
 func NewSpec(opts ...SpecOption) (*Spec, error) {
 	r := &Spec{
 		Method:  http.MethodGet,
-		Url:     "https://example.com",
+		URL:     "https://example.com",
 		Body:    make([]byte, 0),
 		Request: nil,
 	}
@@ -40,7 +40,7 @@ func NewSpec(opts ...SpecOption) (*Spec, error) {
 
 // generateRequest creates the http.Request.
 func (rs *Spec) generateRequest() error {
-	req, err := http.NewRequest(rs.Method, rs.Url, bytes.NewReader(rs.Body))
+	req, err := http.NewRequest(rs.Method, rs.URL, bytes.NewReader(rs.Body))
 	if err != nil {
 		return err
 	}
