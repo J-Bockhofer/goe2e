@@ -102,9 +102,9 @@ func (rh *RequestHandler) Close() error {
 	return nil
 }
 
-// GetRequest returns the http.Request for inspection during assertions.
+// Request returns the http.Request for inspection during assertions.
 // It should not be used to try and modify the request body, as this should be left to the Spec constructor.
-func (rh *RequestHandler) GetRequest() *http.Request {
+func (rh *RequestHandler) Request() *http.Request {
 	return rh.spec.Request
 }
 

@@ -64,8 +64,8 @@ func TestNewSpecWith(t *testing.T) {
 			defaultUrl,
 			payloadInBytes,
 		}},
-		{"WithUrl", args{
-			[]goe2e.SpecOption{goe2e.WithUrl("gallo")},
+		{"WithURL", args{
+			[]goe2e.SpecOption{goe2e.WithURL("gallo")},
 		}, expected{
 			nil,
 			http.MethodGet,
@@ -137,7 +137,7 @@ func TestNewSpecWith(t *testing.T) {
 				return
 			}
 			assert.Equal(t, tt.method, spec.Method)
-			assert.Equal(t, tt.url, spec.Url)
+			assert.Equal(t, tt.url, spec.URL)
 			assert.Equal(t, tt.body, spec.Body)
 			assert.NotNil(t, spec.Request)
 		})
