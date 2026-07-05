@@ -1,7 +1,6 @@
 package goe2e
 
 import (
-	"log"
 	"log/slog"
 	"net/http"
 	"net/http/httptrace"
@@ -33,21 +32,20 @@ func WithContentType(contentType string) RequestModifier {
 	}
 }
 
-// WithTimeToFirstByte will send a secondary request to precisely measure the time to first byte.
+// WithTimeToFirstByte attaches an httptrace to the request that measures the time
+// from when the request is fully written to the wire until the first response byte arrives (TTFB).
 func WithTimeToFirstByte() RequestModifier {
 	return func(r *http.Request) error {
 		var start time.Time
 		trace := &httptrace.ClientTrace{
+			WroteRequest: func(_ httptrace.WroteRequestInfo) {
+				start = time.Now()
+			},
 			GotFirstResponseByte: func() {
-				slog.Info("Time from start to first byte: " + time.Since(start).String())
+				slog.Info("TTFB: " + time.Since(start).String())
 			},
 		}
-		tr := r.Clone(httptrace.WithClientTrace(r.Context(), trace))
-		start = time.Now()
-		if _, err := http.DefaultTransport.RoundTrip(tr); err != nil {
-			log.Fatal(err)
-		}
-		slog.Info("Total time: " + time.Since(start).String())
+		*r = *r.WithContext(httptrace.WithClientTrace(r.Context(), trace))
 		return nil
 	}
 }
