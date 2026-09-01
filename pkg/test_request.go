@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // TestConfig holds all the necessary function handles to run a full end-2-end test as a unit test.
@@ -37,13 +35,6 @@ type TestConfig struct {
 type TestStatement struct {
 	Description string
 	Statement   func(*testing.T, *RequestHandler)
-}
-
-// TestStatusCode is a shorthand for asserting a status code on a response.
-func TestStatusCode(statusCode int) func(*testing.T, *RequestHandler) {
-	return func(t *testing.T, rh *RequestHandler) {
-		assert.Equal(t, statusCode, rh.Response.StatusCode)
-	}
 }
 
 // TestRequest is the main routine for running an E2E test as a unit test.
