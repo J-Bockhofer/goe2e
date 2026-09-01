@@ -1,7 +1,10 @@
 package goe2e
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -88,6 +91,56 @@ func AssertResponseJSONEquals(expected string) TestStatement {
 			assert.JSONEqf(t, expected, string(rh.ResponseBody), "%s", requestDiagnostics(rh))
 		},
 	}
+}
+
+// AssertResponseJSONPointer creates a post-request statement that checks a value selected by an RFC 6901 JSON Pointer.
+// For example, /data/persons/0/name selects the name field of the first person.
+func AssertResponseJSONPointer(pointer string, expected any) TestStatement {
+	return TestStatement{
+		Description: fmt.Sprintf("response JSON pointer %q matches expected value", pointer),
+		Statement: func(t *testing.T, rh *RequestHandler) {
+			var document any
+			if !assert.NoErrorf(t, json.Unmarshal(rh.ResponseBody, &document), "%s", requestDiagnostics(rh)) {
+				return
+			}
+			actual, err := jsonPointerValue(document, pointer)
+			if !assert.NoErrorf(t, err, "%s", requestDiagnostics(rh)) {
+				return
+			}
+			assert.EqualValuesf(t, expected, actual, "%s", requestDiagnostics(rh))
+		},
+	}
+}
+
+func jsonPointerValue(document any, pointer string) (any, error) {
+	if pointer == "" {
+		return document, nil
+	}
+	if !strings.HasPrefix(pointer, "/") {
+		return nil, fmt.Errorf("JSON pointer %q must start with /", pointer)
+	}
+
+	current := document
+	for _, token := range strings.Split(pointer[1:], "/") {
+		token = strings.ReplaceAll(strings.ReplaceAll(token, "~1", "/"), "~0", "~")
+		switch value := current.(type) {
+		case map[string]any:
+			var ok bool
+			current, ok = value[token]
+			if !ok {
+				return nil, fmt.Errorf("JSON pointer %q does not exist", pointer)
+			}
+		case []any:
+			index, err := strconv.Atoi(token)
+			if err != nil || index < 0 || index >= len(value) {
+				return nil, fmt.Errorf("JSON pointer %q has invalid array index %q", pointer, token)
+			}
+			current = value[index]
+		default:
+			return nil, fmt.Errorf("JSON pointer %q cannot descend into %T", pointer, current)
+		}
+	}
+	return current, nil
 }
 
 // TestStatusCode is a shorthand for asserting a status code on a response.
