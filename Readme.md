@@ -199,6 +199,10 @@ OnDiagnostic: func(d goe2e.RequestDiagnostic) {
 
 That's it!
 
+## Compatibility and releases
+
+The module currently requires Go 1.27. Its public API and versioning policy are documented in [COMPATIBILITY.md](COMPATIBILITY.md).
+
 
 ## Limitations
 
