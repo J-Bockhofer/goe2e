@@ -1,6 +1,6 @@
 module github.com/J-Bockhofer/goe2e
 
-go 1.26.3
+go 1.27
 
 require github.com/stretchr/testify v1.9.0
 

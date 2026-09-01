@@ -2,6 +2,7 @@ package goe2e
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +12,9 @@ import (
 type TestConfig struct {
 	// The name of the test.
 	Name string
+	// HTTPClient executes the request. When nil, TestRequest uses a new default HTTP client.
+	// Supplying the client from httptest.NewTestServer keeps the request in memory.
+	HTTPClient *http.Client
 	// Request specific options, like url, method and body.
 	// After applying the options the http.Request will we constructed.
 	SpecOpts []SpecOption
@@ -46,7 +50,11 @@ func TestStatusCode(statusCode int) func(*testing.T, *RequestHandler) {
 // It executes the functions passed via the TestConfig with a fixed entry point for each of its field.
 func TestRequest(t *testing.T, tc *TestConfig) {
 	// create request, checking for nil pointer
-	rh, makeErr := NewRequestHandler(WithSpecOpts(tc.SpecOpts...))
+	rhOpts := []RequestHandlerOption{WithSpecOpts(tc.SpecOpts...)}
+	if tc.HTTPClient != nil {
+		rhOpts = append(rhOpts, WithClient(tc.HTTPClient))
+	}
+	rh, makeErr := NewRequestHandler(rhOpts...)
 	if makeErr != nil {
 		t.Errorf("request: %s \nGenerating request failed: %s", tc.Name, makeErr.Error())
 		return

@@ -117,6 +117,31 @@ This can be dealt with using environment variables that skip E2E tests / signal 
 
 Alternatively [testing.M](https://pkg.go.dev/testing#hdr-Main) provides a space for test setup and teardown functions.
 
+### In-memory server tests (Go 1.27+)
+
+For deterministic tests without a running application, create an in-memory test server and pass its client to `TestConfig`. The client sends requests to the test handler without opening a port or resolving DNS.
+
+```go
+func TestPersonPost(t *testing.T) {
+	server := httptest.NewTestServer(t, app.Router())
+
+	goe2e.TestRequest(t, &goe2e.TestConfig{
+		Name:       "POST /persons",
+		HTTPClient: server.Client(),
+		SpecOpts: []goe2e.SpecOption{
+			goe2e.WithMethod(http.MethodPost),
+			goe2e.WithURL("https://service.test/persons"),
+			goe2e.WithJSON(&model.Person{Name: "john", Age: 32}),
+		},
+		PostTestStatements: []goe2e.TestStatement{
+			{"status 202", goe2e.TestStatusCode(http.StatusAccepted)},
+		},
+	})
+}
+```
+
+`httptest.NewTestServer` registers its own cleanup, so no `defer server.Close()` is necessary. Omitting `HTTPClient` retains the real-network behavior.
+
 That's it!
 
 
@@ -134,4 +159,4 @@ That's it!
 
 - Missing convenience functions (Auth Header)
 
-- Implementation is subject to change 
+- Implementation is subject to change
