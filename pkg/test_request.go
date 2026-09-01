@@ -87,19 +87,19 @@ func TestRequest(t *testing.T, tc *TestConfig) {
 	// run request
 	runErr := rh.RunRequest()
 	if runErr != nil {
-		t.Errorf("request: %s \nRequest execution failed: %s", tc.Name, runErr.Error())
+		t.Errorf("request: %s\nRequest execution failed: %s\n%s", tc.Name, runErr.Error(), requestDiagnostics(rh))
 		return
 	}
 	// run response body modifications
 	modBodyErr := rh.ModifyResponseBody(tc.ResponseBodyMods...)
 	if modBodyErr != nil {
-		t.Errorf("request: %s \n%s\n", tc.Name, modBodyErr.Error())
+		t.Errorf("request: %s\n%s\n%s", tc.Name, modBodyErr.Error(), requestDiagnostics(rh))
 		return
 	}
 	// run response modfications
 	modRespErr := rh.ModifyResponse(tc.ResponseMods...)
 	if modRespErr != nil {
-		t.Errorf("request: %s \n%s", tc.Name, modRespErr.Error())
+		t.Errorf("request: %s\n%s\n%s", tc.Name, modRespErr.Error(), requestDiagnostics(rh))
 		return
 	}
 	// run post-flight "script"
