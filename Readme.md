@@ -85,7 +85,7 @@ func TestPersonPost(t *testing.T) {
 	}
 	rc := &goe2e.TestConfig{
 		Name: "POST /persons",
-		SpecOpts: []goe2e.RequestSpecOption{
+		SpecOpts: []goe2e.SpecOption{
 			goe2e.WithMethod(http.MethodPost),
 			goe2e.WithURL("http://localhost:8080/persons/"),
 			goe2e.WithJSON(&p),
@@ -141,6 +141,8 @@ func TestPersonPost(t *testing.T) {
 ```
 
 `httptest.NewTestServer` registers its own cleanup, so no `defer server.Close()` is necessary. Omitting `HTTPClient` retains the real-network behavior.
+
+For a complete, runnable example using only `net/http`, see [examples/standard_http_test.go](examples/standard_http_test.go).
 
 That's it!
 
