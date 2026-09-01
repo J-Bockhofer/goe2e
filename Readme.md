@@ -203,6 +203,8 @@ That's it!
 
 The module currently requires Go 1.27. Its public API and versioning policy are documented in [COMPATIBILITY.md](COMPATIBILITY.md).
 
+For the lifecycle flow, common helpers, and migration notes, see [API.md](API.md).
+
 
 ## Limitations
 
