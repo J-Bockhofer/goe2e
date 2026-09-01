@@ -141,6 +141,9 @@ func (rh *RequestHandler) Request() *http.Request {
 }
 
 func (rh *RequestHandler) ModifyRequest(respBodyOpts ...RequestModifier) error {
+	if len(respBodyOpts) == 0 {
+		return nil
+	}
 	if rh.spec.Request == nil {
 		return fmt.Errorf("no http.Request generated before modifying it")
 	}
@@ -155,6 +158,9 @@ func (rh *RequestHandler) ModifyRequest(respBodyOpts ...RequestModifier) error {
 
 // ModifyResponseBody allows for passing a set of functions that sequentially modify the ResponseBody.
 func (rh *RequestHandler) ModifyResponseBody(respBodyOpts ...ResponseBodyModifier) error {
+	if len(respBodyOpts) == 0 {
+		return nil
+	}
 	if rh.ResponseBody == nil {
 		return fmt.Errorf("no ResponseBody set before modifying it")
 	}
@@ -171,6 +177,9 @@ func (rh *RequestHandler) ModifyResponseBody(respBodyOpts ...ResponseBodyModifie
 // ModifyResponse allows for passing a set of functions that change the http.Response directly.
 // Should not be used for modifying the response body, use (RequestHandler).ModifyResponseBody instead.
 func (rh *RequestHandler) ModifyResponse(respOpts ...ResponseModifier) error {
+	if len(respOpts) == 0 {
+		return nil
+	}
 	if rh.Response == nil {
 		return fmt.Errorf("no response gathered before modifying it")
 	}
