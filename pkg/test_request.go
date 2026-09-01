@@ -20,6 +20,9 @@ type TestConfig struct {
 	Context context.Context
 	// Timeout limits a single request without modifying HTTPClient. A zero timeout is unlimited.
 	Timeout time.Duration
+	// OnDiagnostic receives a safe, structured summary after the test request finishes.
+	// It omits sensitive headers and response-body content.
+	OnDiagnostic func(RequestDiagnostic)
 	// Request specific options, like url, method and body.
 	// After applying the options the http.Request will we constructed.
 	SpecOpts []SpecOption
@@ -62,6 +65,11 @@ func TestRequest(t *testing.T, tc *TestConfig) {
 	if makeErr != nil {
 		t.Errorf("request: %s \nGenerating request failed: %s", tc.Name, makeErr.Error())
 		return
+	}
+	if tc.OnDiagnostic != nil {
+		defer func() {
+			tc.OnDiagnostic(rh.Diagnostic())
+		}()
 	}
 	// run request modfications
 	modErr := rh.ModifyRequest(tc.RequestMods...)

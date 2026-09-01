@@ -186,6 +186,17 @@ Use `httptest.NewTestServer` and `HTTPClient: server.Client()` when testing hand
 
 Omit `HTTPClient` when a test must reach a separately running service. This is appropriate for deployment configuration, DNS, real TLS/network behavior, or dependencies that cannot be represented by a local handler. Set `Context` or `Timeout` on `TestConfig` for an explicit cancellation boundary in those tests.
 
+### Structured diagnostics
+
+Set `OnDiagnostic` to send a safe request summary to your logger or metrics system. It includes the method, URL, status, selected response metadata, and byte count, while omitting credentials, cookies, and response-body content.
+
+```go
+OnDiagnostic: func(d goe2e.RequestDiagnostic) {
+	logger.Info("HTTP test request", "method", d.Method, "url", d.URL,
+		"status", d.ResponseCode, "response_bytes", d.ResponseBytes)
+},
+```
+
 That's it!
 
 
