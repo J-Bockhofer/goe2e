@@ -1,14 +1,20 @@
 package goe2e_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	goe2e "github.com/J-Bockhofer/goe2e/pkg"
 )
 
 func TestTestRequest(t *testing.T) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
 	tc := &goe2e.TestConfig{
-		Name: "",
+		Name:       "GET /",
+		HTTPClient: server.Client(),
 		SpecOpts: []goe2e.SpecOption{
 			goe2e.WithURL("https://www.github.com"),
 		},
@@ -20,8 +26,12 @@ func TestTestRequest(t *testing.T) {
 }
 
 func TestTestRequestWithTimings(t *testing.T) {
+	server := httptest.NewTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
 	tc := &goe2e.TestConfig{
-		Name: "",
+		Name:       "GET / with timings",
+		HTTPClient: server.Client(),
 		SpecOpts: []goe2e.SpecOption{
 			goe2e.WithURL("https://www.github.com"),
 		},

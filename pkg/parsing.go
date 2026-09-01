@@ -3,6 +3,7 @@ package goe2e
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -62,7 +63,13 @@ func AssembleQuery(route string, queryMap D) string {
 	if !strings.HasSuffix(route, "?") {
 		route += "?"
 	}
-	for k, v := range queryMap {
+	keys := make([]string, 0, len(queryMap))
+	for key := range queryMap {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		v := queryMap[k]
 		k = queryEncodeCharsInString(k)
 		v = queryEncodeCharsInString(v)
 		route += k + "=" + v + "&"

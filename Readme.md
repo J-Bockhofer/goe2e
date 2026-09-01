@@ -85,7 +85,7 @@ func TestPersonPost(t *testing.T) {
 	}
 	rc := &goe2e.TestConfig{
 		Name: "POST /persons",
-		SpecOpts: []goe2e.RequestSpecOption{
+		SpecOpts: []goe2e.SpecOption{
 			goe2e.WithMethod(http.MethodPost),
 			goe2e.WithURL("http://localhost:8080/persons/"),
 			goe2e.WithJSON(&p),
@@ -117,7 +117,93 @@ This can be dealt with using environment variables that skip E2E tests / signal 
 
 Alternatively [testing.M](https://pkg.go.dev/testing#hdr-Main) provides a space for test setup and teardown functions.
 
+### In-memory server tests (Go 1.27+)
+
+For deterministic tests without a running application, create an in-memory test server and pass its client to `TestConfig`. The client sends requests to the test handler without opening a port or resolving DNS.
+
+```go
+func TestPersonPost(t *testing.T) {
+	server := httptest.NewTestServer(t, app.Router())
+
+	goe2e.TestRequest(t, &goe2e.TestConfig{
+		Name:       "POST /persons",
+		HTTPClient: server.Client(),
+		SpecOpts: []goe2e.SpecOption{
+			goe2e.WithMethod(http.MethodPost),
+			goe2e.WithURL("https://service.test/persons"),
+			goe2e.WithJSON(&model.Person{Name: "john", Age: 32}),
+		},
+		PostTestStatements: []goe2e.TestStatement{
+			{"status 202", goe2e.TestStatusCode(http.StatusAccepted)},
+		},
+	})
+}
+```
+
+`httptest.NewTestServer` registers its own cleanup, so no `defer server.Close()` is necessary. Omitting `HTTPClient` retains the real-network behavior.
+
+For a complete, runnable example using only `net/http`, see [examples/standard_http_test.go](examples/standard_http_test.go).
+
+### Gin without a running port
+
+Gin's `*gin.Engine` implements `http.Handler`, so it can be passed straight to `httptest.NewTestServer`. This keeps Gin an application dependency only; `goe2e` does not depend on it.
+
+```go
+func TestPersonPost(t *testing.T) {
+	router := gin.New()
+	router.POST("/persons", func(c *gin.Context) {
+		var person model.Person
+		if err := c.ShouldBindJSON(&person); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		c.JSON(http.StatusCreated, person)
+	})
+
+	server := httptest.NewTestServer(t, router)
+	goe2e.TestRequest(t, &goe2e.TestConfig{
+		Name:       "POST /persons",
+		HTTPClient: server.Client(),
+		SpecOpts: []goe2e.SpecOption{
+			goe2e.WithMethod(http.MethodPost),
+			goe2e.WithURL("https://app.test/persons"),
+			goe2e.WithJSON(model.Person{Name: "John", Age: 32}),
+		},
+		RequestMods: []goe2e.RequestModifier{
+			goe2e.WithContentType(goe2e.ContentHeaderJSON),
+		},
+		PostTestStatements: []goe2e.TestStatement{
+			goe2e.AssertStatusCode(http.StatusCreated),
+			goe2e.AssertResponseJSONPointer("/name", "John"),
+		},
+	})
+}
+```
+
+### Choosing an in-memory or real service target
+
+Use `httptest.NewTestServer` and `HTTPClient: server.Client()` when testing handlers, middleware, validation, and response contracts. It is deterministic, does not open a port, and routes the configured client to the test handler even when the request URL uses a readable hostname such as `https://app.test`.
+
+Omit `HTTPClient` when a test must reach a separately running service. This is appropriate for deployment configuration, DNS, real TLS/network behavior, or dependencies that cannot be represented by a local handler. Set `Context` or `Timeout` on `TestConfig` for an explicit cancellation boundary in those tests.
+
+### Structured diagnostics
+
+Set `OnDiagnostic` to send a safe request summary to your logger or metrics system. It includes the method, URL, status, selected response metadata, and byte count, while omitting credentials, cookies, and response-body content.
+
+```go
+OnDiagnostic: func(d goe2e.RequestDiagnostic) {
+	logger.Info("HTTP test request", "method", d.Method, "url", d.URL,
+		"status", d.ResponseCode, "response_bytes", d.ResponseBytes)
+},
+```
+
 That's it!
+
+## Compatibility and releases
+
+The module currently requires Go 1.27. Its public API and versioning policy are documented in [COMPATIBILITY.md](COMPATIBILITY.md).
+
+For the lifecycle flow, common helpers, and migration notes, see [API.md](API.md).
 
 
 ## Limitations
@@ -134,4 +220,4 @@ That's it!
 
 - Missing convenience functions (Auth Header)
 
-- Implementation is subject to change 
+- Implementation is subject to change

@@ -1,16 +1,28 @@
 package goe2e
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
+	"time"
 )
 
 // TestConfig holds all the necessary function handles to run a full end-2-end test as a unit test.
 type TestConfig struct {
 	// The name of the test.
 	Name string
+	// HTTPClient executes the request. When nil, TestRequest uses a new default HTTP client.
+	// Supplying the client from httptest.NewTestServer keeps the request in memory.
+	HTTPClient *http.Client
+	// Context is applied to the request before pre-request statements run.
+	// When nil, the request's existing context is used.
+	Context context.Context
+	// Timeout limits a single request without modifying HTTPClient. A zero timeout is unlimited.
+	Timeout time.Duration
+	// OnDiagnostic receives a safe, structured summary after the test request finishes.
+	// It omits sensitive headers and response-body content.
+	OnDiagnostic func(RequestDiagnostic)
 	// Request specific options, like url, method and body.
 	// After applying the options the http.Request will we constructed.
 	SpecOpts []SpecOption
@@ -35,21 +47,29 @@ type TestStatement struct {
 	Statement   func(*testing.T, *RequestHandler)
 }
 
-// TestStatusCode is a shorthand for asserting a status code on a response.
-func TestStatusCode(statusCode int) func(*testing.T, *RequestHandler) {
-	return func(t *testing.T, rh *RequestHandler) {
-		assert.Equal(t, statusCode, rh.Response.StatusCode)
-	}
-}
-
 // TestRequest is the main routine for running an E2E test as a unit test.
 // It executes the functions passed via the TestConfig with a fixed entry point for each of its field.
 func TestRequest(t *testing.T, tc *TestConfig) {
 	// create request, checking for nil pointer
-	rh, makeErr := NewRequestHandler(WithSpecOpts(tc.SpecOpts...))
+	rhOpts := []RequestHandlerOption{WithSpecOpts(tc.SpecOpts...)}
+	if tc.HTTPClient != nil {
+		rhOpts = append(rhOpts, WithClient(tc.HTTPClient))
+	}
+	if tc.Context != nil {
+		rhOpts = append(rhOpts, WithContext(tc.Context))
+	}
+	if tc.Timeout != 0 {
+		rhOpts = append(rhOpts, WithTimeout(tc.Timeout))
+	}
+	rh, makeErr := NewRequestHandler(rhOpts...)
 	if makeErr != nil {
 		t.Errorf("request: %s \nGenerating request failed: %s", tc.Name, makeErr.Error())
 		return
+	}
+	if tc.OnDiagnostic != nil {
+		defer func() {
+			tc.OnDiagnostic(rh.Diagnostic())
+		}()
 	}
 	// run request modfications
 	modErr := rh.ModifyRequest(tc.RequestMods...)
@@ -75,19 +95,19 @@ func TestRequest(t *testing.T, tc *TestConfig) {
 	// run request
 	runErr := rh.RunRequest()
 	if runErr != nil {
-		t.Errorf("request: %s \nRequest execution failed: %s", tc.Name, runErr.Error())
+		t.Errorf("request: %s\nRequest execution failed: %s\n%s", tc.Name, runErr.Error(), requestDiagnostics(rh))
 		return
 	}
 	// run response body modifications
 	modBodyErr := rh.ModifyResponseBody(tc.ResponseBodyMods...)
 	if modBodyErr != nil {
-		t.Errorf("request: %s \n%s\n", tc.Name, modBodyErr.Error())
+		t.Errorf("request: %s\n%s\n%s", tc.Name, modBodyErr.Error(), requestDiagnostics(rh))
 		return
 	}
 	// run response modfications
 	modRespErr := rh.ModifyResponse(tc.ResponseMods...)
 	if modRespErr != nil {
-		t.Errorf("request: %s \n%s", tc.Name, modRespErr.Error())
+		t.Errorf("request: %s\n%s\n%s", tc.Name, modRespErr.Error(), requestDiagnostics(rh))
 		return
 	}
 	// run post-flight "script"
