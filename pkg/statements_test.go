@@ -22,7 +22,7 @@ func TestLifecycleStatementHelpers(t *testing.T) {
 		HTTPClient: server.Client(),
 		SpecOpts: []goe2e.SpecOption{
 			goe2e.WithMethod(http.MethodPost),
-			goe2e.WithURL("https://service.test/persons"),
+			goe2e.WithURL("https://service.test/persons?include=address"),
 		},
 		RequestMods: []goe2e.RequestModifier{
 			goe2e.WithContentType(goe2e.ContentHeaderJSON),
@@ -30,6 +30,7 @@ func TestLifecycleStatementHelpers(t *testing.T) {
 		PreTestStatements: []goe2e.TestStatement{
 			goe2e.AssertRequestMethod(http.MethodPost),
 			goe2e.AssertRequestPath("/persons"),
+			goe2e.AssertRequestQuery("include", "address"),
 			goe2e.AssertRequestHeader("Content-Type", goe2e.ContentHeaderJSON),
 		},
 		PostTestStatements: []goe2e.TestStatement{

@@ -38,6 +38,19 @@ func AssertRequestPath(expected string) TestStatement {
 	}
 }
 
+// AssertRequestQuery creates a pre-request statement that checks a query parameter value.
+func AssertRequestQuery(key, expected string) TestStatement {
+	return TestStatement{
+		Description: fmt.Sprintf("request query parameter %s is %q", key, expected),
+		Statement: func(t *testing.T, rh *RequestHandler) {
+			req := rh.Request()
+			if assert.NotNil(t, req) {
+				assert.Equalf(t, expected, req.URL.Query().Get(key), "%s", requestDiagnostics(rh))
+			}
+		},
+	}
+}
+
 // AssertRequestHeader creates a pre-request statement that checks a request header.
 func AssertRequestHeader(key, expected string) TestStatement {
 	return TestStatement{
