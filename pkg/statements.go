@@ -1,8 +1,10 @@
 package goe2e
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"testing"
@@ -45,6 +47,27 @@ func AssertRequestHeader(key, expected string) TestStatement {
 			if assert.NotNil(t, req) {
 				assert.Equalf(t, expected, req.Header.Get(key), "%s", requestDiagnostics(rh))
 			}
+		},
+	}
+}
+
+// AssertRequestJSONEquals creates a pre-request statement that compares the request body with expected JSON.
+// The request body is restored after reading so the request is sent unchanged.
+func AssertRequestJSONEquals(expected string) TestStatement {
+	return TestStatement{
+		Description: "request JSON matches expected document",
+		Statement: func(t *testing.T, rh *RequestHandler) {
+			req := rh.Request()
+			if !assert.NotNil(t, req) || !assert.NotNil(t, req.Body) {
+				return
+			}
+			body, err := io.ReadAll(req.Body)
+			req.Body.Close()
+			req.Body = io.NopCloser(bytes.NewReader(body))
+			if !assert.NoErrorf(t, err, "%s", requestDiagnostics(rh)) {
+				return
+			}
+			assert.JSONEqf(t, expected, string(body), "%s", requestDiagnostics(rh))
 		},
 	}
 }
