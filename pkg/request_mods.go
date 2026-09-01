@@ -1,6 +1,7 @@
 package goe2e
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptrace"
@@ -28,6 +29,35 @@ const (
 func WithContentType(contentType string) RequestModifier {
 	return func(r *http.Request) error {
 		r.Header.Set("Content-Type", contentType)
+		return nil
+	}
+}
+
+// WithBearerToken sets the Authorization header using the Bearer scheme.
+func WithBearerToken(token string) RequestModifier {
+	return func(r *http.Request) error {
+		r.Header.Set("Authorization", "Bearer "+token)
+		return nil
+	}
+}
+
+// WithBasicAuth sets the Authorization header using HTTP Basic authentication.
+func WithBasicAuth(username, password string) RequestModifier {
+	return func(r *http.Request) error {
+		r.SetBasicAuth(username, password)
+		return nil
+	}
+}
+
+// WithCookies adds cookies to the request.
+func WithCookies(cookies ...*http.Cookie) RequestModifier {
+	return func(r *http.Request) error {
+		for _, cookie := range cookies {
+			if cookie == nil {
+				return fmt.Errorf("request cookie must not be nil")
+			}
+			r.AddCookie(cookie)
+		}
 		return nil
 	}
 }
