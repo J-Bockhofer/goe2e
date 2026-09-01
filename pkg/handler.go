@@ -1,9 +1,11 @@
 package goe2e
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 // RequestHandler handles construction, modification and execution of a http.Request.
@@ -11,6 +13,7 @@ import (
 type RequestHandler struct {
 	spec         *Spec
 	Client       *http.Client
+	Timeout      time.Duration
 	Response     *http.Response
 	ResponseBody []byte
 }
@@ -28,6 +31,7 @@ func NewRequestHandler(opts ...RequestHandlerOption) (*RequestHandler, error) {
 	rh := &RequestHandler{
 		spec:         spec,
 		Client:       nil,
+		Timeout:      0,
 		Response:     nil,
 		ResponseBody: nil,
 	}
@@ -67,6 +71,28 @@ func WithClient(client *http.Client) RequestHandlerOption {
 	}
 }
 
+// WithContext applies ctx to the request before it is executed.
+func WithContext(ctx context.Context) RequestHandlerOption {
+	return func(rh *RequestHandler) error {
+		if ctx == nil {
+			return fmt.Errorf("request context must not be nil")
+		}
+		rh.spec.Request = rh.spec.Request.WithContext(ctx)
+		return nil
+	}
+}
+
+// WithTimeout limits the lifetime of a single request. A zero timeout leaves the request unlimited.
+func WithTimeout(timeout time.Duration) RequestHandlerOption {
+	return func(rh *RequestHandler) error {
+		if timeout < 0 {
+			return fmt.Errorf("request timeout must not be negative")
+		}
+		rh.Timeout = timeout
+		return nil
+	}
+}
+
 // RunRequest will execute the http.Request and write the response to the RequestHandler.ResponseBody.
 func (rh *RequestHandler) RunRequest() error {
 	if rh.spec == nil {
@@ -75,7 +101,13 @@ func (rh *RequestHandler) RunRequest() error {
 	if rh.Client == nil {
 		rh.Client = &http.Client{}
 	}
-	resp, err := rh.Client.Do(rh.spec.Request)
+	req := rh.spec.Request
+	if rh.Timeout > 0 {
+		ctx, cancel := context.WithTimeout(req.Context(), rh.Timeout)
+		defer cancel()
+		req = req.WithContext(ctx)
+	}
+	resp, err := rh.Client.Do(req)
 	if err != nil {
 		return err
 	}

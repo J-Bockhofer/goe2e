@@ -1,9 +1,11 @@
 package goe2e
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 )
 
 // TestConfig holds all the necessary function handles to run a full end-2-end test as a unit test.
@@ -13,6 +15,11 @@ type TestConfig struct {
 	// HTTPClient executes the request. When nil, TestRequest uses a new default HTTP client.
 	// Supplying the client from httptest.NewTestServer keeps the request in memory.
 	HTTPClient *http.Client
+	// Context is applied to the request before pre-request statements run.
+	// When nil, the request's existing context is used.
+	Context context.Context
+	// Timeout limits a single request without modifying HTTPClient. A zero timeout is unlimited.
+	Timeout time.Duration
 	// Request specific options, like url, method and body.
 	// After applying the options the http.Request will we constructed.
 	SpecOpts []SpecOption
@@ -44,6 +51,12 @@ func TestRequest(t *testing.T, tc *TestConfig) {
 	rhOpts := []RequestHandlerOption{WithSpecOpts(tc.SpecOpts...)}
 	if tc.HTTPClient != nil {
 		rhOpts = append(rhOpts, WithClient(tc.HTTPClient))
+	}
+	if tc.Context != nil {
+		rhOpts = append(rhOpts, WithContext(tc.Context))
+	}
+	if tc.Timeout != 0 {
+		rhOpts = append(rhOpts, WithTimeout(tc.Timeout))
 	}
 	rh, makeErr := NewRequestHandler(rhOpts...)
 	if makeErr != nil {
