@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	goe2e "github.com/J-Bockhofer/goe2e/pkg"
+	goe2e "github.com/J-Bockhofer/goe2e"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	goe2e "github.com/J-Bockhofer/goe2e/pkg"
+	goe2e "github.com/J-Bockhofer/goe2e"
 )
 
 func TestTestRequest(t *testing.T) {

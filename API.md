@@ -54,6 +54,18 @@ PostTestStatements: []goe2e.TestStatement{
 
 ## Migration notes
 
+### Import from the module root
+
+The public package now lives at the module root. Update existing imports:
+
+```go
+// Before
+goe2e "github.com/J-Bockhofer/goe2e/pkg"
+
+// After
+goe2e "github.com/J-Bockhofer/goe2e"
+```
+
 ### Move from externally running tests to in-memory handler tests
 
 Keep the same request configuration and provide the server client:
