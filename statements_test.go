@@ -37,6 +37,7 @@ func TestLifecycleStatementHelpers(t *testing.T) {
 			goe2e.AssertStatusCode(http.StatusCreated),
 			goe2e.AssertResponseHeader("Location", "/persons/42"),
 			goe2e.AssertResponseBodyContains(`"name":"John"`),
+			goe2e.AssertResponseBodyEquals(`{"name":"John","id":"42"}`),
 			goe2e.AssertResponseJSONEquals(`{"id":"42","name":"John"}`),
 		},
 	})

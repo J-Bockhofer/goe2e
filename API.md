@@ -35,18 +35,21 @@ PreTestStatements: []goe2e.TestStatement{
 	goe2e.AssertRequestPath("/persons"),
 	goe2e.AssertRequestQuery("include", "address"),
 	goe2e.AssertRequestHeader("Content-Type", goe2e.ContentHeaderJSON),
+	goe2e.AssertRequestBodyEquals(`raw request body`),
 	goe2e.AssertRequestJSONEquals(`{"name":"John"}`),
 },
 PostTestStatements: []goe2e.TestStatement{
 	goe2e.AssertStatusCode(http.StatusCreated),
 	goe2e.AssertResponseHeader("Location", "/persons/42"),
 	goe2e.AssertResponseBodyContains("created"),
+	goe2e.AssertResponseBodyEquals(`created`),
 	goe2e.AssertResponseJSONEquals(`{"id":"42"}`),
 	goe2e.AssertResponseJSONPointer("/id", "42"),
 },
 ```
 
 `AssertResponseJSONPointer` follows [RFC 6901 JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901), including array indexes such as `/data/items/0/id`.
+`AssertRequestBodyEquals` and `AssertResponseBodyEquals` compare bytes as text; use the JSON variants when object-key order should not matter.
 
 ## Request modifiers
 

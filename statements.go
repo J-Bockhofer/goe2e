@@ -64,6 +64,27 @@ func AssertRequestHeader(key, expected string) TestStatement {
 	}
 }
 
+// AssertRequestBodyEquals creates a pre-request statement that compares the request body exactly.
+// The request body is restored after reading so the request is sent unchanged.
+func AssertRequestBodyEquals(expected string) TestStatement {
+	return TestStatement{
+		Description: "request body matches expected content",
+		Statement: func(t *testing.T, rh *RequestHandler) {
+			req := rh.Request()
+			if !assert.NotNil(t, req) || !assert.NotNil(t, req.Body) {
+				return
+			}
+			body, err := io.ReadAll(req.Body)
+			req.Body.Close()
+			req.Body = io.NopCloser(bytes.NewReader(body))
+			if !assert.NoErrorf(t, err, "%s", requestDiagnostics(rh)) {
+				return
+			}
+			assert.Equalf(t, expected, string(body), "%s", requestDiagnostics(rh))
+		},
+	}
+}
+
 // AssertRequestJSONEquals creates a pre-request statement that compares the request body with expected JSON.
 // The request body is restored after reading so the request is sent unchanged.
 func AssertRequestJSONEquals(expected string) TestStatement {
@@ -115,6 +136,16 @@ func AssertResponseBodyContains(expected string) TestStatement {
 		Description: fmt.Sprintf("response body contains %q", expected),
 		Statement: func(t *testing.T, rh *RequestHandler) {
 			assert.Containsf(t, string(rh.ResponseBody), expected, "%s", requestDiagnostics(rh))
+		},
+	}
+}
+
+// AssertResponseBodyEquals creates a post-request statement that compares response body content exactly.
+func AssertResponseBodyEquals(expected string) TestStatement {
+	return TestStatement{
+		Description: "response body matches expected content",
+		Statement: func(t *testing.T, rh *RequestHandler) {
+			assert.Equalf(t, expected, string(rh.ResponseBody), "%s", requestDiagnostics(rh))
 		},
 	}
 }

@@ -36,6 +36,7 @@ func TestAssertRequestJSONEqualsRestoresRequestBody(t *testing.T) {
 			goe2e.WithJSON(goe2e.H{"name": "John", "age": 32}),
 		},
 		PreTestStatements: []goe2e.TestStatement{
+			goe2e.AssertRequestBodyEquals(`{"age":32,"name":"John"}`),
 			goe2e.AssertRequestJSONEquals(`{"age":32,"name":"John"}`),
 		},
 		PostTestStatements: []goe2e.TestStatement{

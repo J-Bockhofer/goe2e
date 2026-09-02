@@ -19,8 +19,8 @@
 
 ## Milestone 2: HTTP assertions that remove boilerplate
 
-- [x] Request method, path, query, and header statements.
-- [x] Response status, header, body-substring, and JSON-equality statements.
+- [x] Request method, path, query, header, and exact-body statements.
+- [x] Response status, header, exact-body, body-substring, and JSON-equality statements.
 - [x] JSON-pointer/value statements using RFC 6901, avoiding a non-standard JSONPath dependency.
 - [x] Authentication and cookie request modifiers.
 - [x] Request and response JSON helpers with useful mismatch diffs.
