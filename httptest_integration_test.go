@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	goe2e "github.com/J-Bockhofer/goe2e/pkg"
+	goe2e "github.com/J-Bockhofer/goe2e"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -24,12 +24,14 @@ func TestInMemoryServerSupportsHTTPS(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
-	goe2e.TestRequest(t, &goe2e.TestConfig{
-		Name:       "HTTPS request",
+	goe2e.TestRequest(t, goe2e.TestConfig{
 		HTTPClient: server.Client(),
-		SpecOpts:   []goe2e.SpecOption{goe2e.WithURL("https://app.test/health")},
-		PostTestStatements: []goe2e.TestStatement{
-			goe2e.AssertStatusCode(http.StatusNoContent),
+		Request: goe2e.RequestConfig{
+			Name:     "HTTPS request",
+			SpecOpts: []goe2e.SpecOption{goe2e.WithURL("https://app.test/health")},
+			PostTestStatements: []goe2e.TestStatement{
+				goe2e.AssertStatusCode(http.StatusNoContent),
+			},
 		},
 	})
 }
@@ -44,20 +46,22 @@ func TestInMemoryServerHandlesMalformedJSON(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
-	goe2e.TestRequest(t, &goe2e.TestConfig{
-		Name:       "invalid JSON payload",
+	goe2e.TestRequest(t, goe2e.TestConfig{
 		HTTPClient: server.Client(),
-		SpecOpts: []goe2e.SpecOption{
-			goe2e.WithMethod(http.MethodPost),
-			goe2e.WithURL("https://app.test/persons"),
-			goe2e.WithBody([]byte(`{"name":`)),
-		},
-		RequestMods: []goe2e.RequestModifier{
-			goe2e.WithContentType(goe2e.ContentHeaderJSON),
-		},
-		PostTestStatements: []goe2e.TestStatement{
-			goe2e.AssertStatusCode(http.StatusBadRequest),
-			goe2e.AssertResponseBodyContains("invalid JSON"),
+		Request: goe2e.RequestConfig{
+			Name: "invalid JSON payload",
+			SpecOpts: []goe2e.SpecOption{
+				goe2e.WithMethod(http.MethodPost),
+				goe2e.WithURL("https://app.test/persons"),
+				goe2e.WithBody([]byte(`{"name":`)),
+			},
+			RequestMods: []goe2e.RequestModifier{
+				goe2e.WithContentType(goe2e.ContentHeaderJSON),
+			},
+			PostTestStatements: []goe2e.TestStatement{
+				goe2e.AssertStatusCode(http.StatusBadRequest),
+				goe2e.AssertResponseBodyContains("invalid JSON"),
+			},
 		},
 	})
 }
