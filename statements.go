@@ -2,7 +2,6 @@ package goe2e
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -166,11 +165,7 @@ func AssertResponseJSONPointer(pointer string, expected any) TestStatement {
 	return TestStatement{
 		Description: fmt.Sprintf("response JSON pointer %q matches expected value", pointer),
 		Statement: func(t *testing.T, rh *RequestHandler) {
-			var document any
-			if !assert.NoErrorf(t, json.Unmarshal(rh.ResponseBody, &document), "%s", requestDiagnostics(rh)) {
-				return
-			}
-			actual, err := jsonPointerValue(document, pointer)
+			actual, err := rh.ResponseJSONPointer(pointer)
 			if !assert.NoErrorf(t, err, "%s", requestDiagnostics(rh)) {
 				return
 			}

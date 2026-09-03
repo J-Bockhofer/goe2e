@@ -50,6 +50,16 @@ type TestStatement struct {
 // TestRequest is the main routine for running an E2E test as a unit test.
 // It executes the functions passed via the TestConfig with a fixed entry point for each of its field.
 func TestRequest(t *testing.T, tc *TestConfig) {
+	runTestRequest(t, tc)
+}
+
+// runTestRequest executes a test configuration and returns its handler when setup and execution succeed.
+// Assertion failures remain non-fatal, matching TestRequest's existing behavior.
+func runTestRequest(t *testing.T, tc *TestConfig) *RequestHandler {
+	if tc == nil {
+		t.Error("test request configuration must not be nil")
+		return nil
+	}
 	// create request, checking for nil pointer
 	rhOpts := []RequestHandlerOption{WithSpecOpts(tc.SpecOpts...)}
 	if tc.HTTPClient != nil {
@@ -64,7 +74,7 @@ func TestRequest(t *testing.T, tc *TestConfig) {
 	rh, makeErr := NewRequestHandler(rhOpts...)
 	if makeErr != nil {
 		t.Errorf("request: %s \nGenerating request failed: %s", tc.Name, makeErr.Error())
-		return
+		return nil
 	}
 	if tc.OnDiagnostic != nil {
 		defer func() {
@@ -75,14 +85,14 @@ func TestRequest(t *testing.T, tc *TestConfig) {
 	modErr := rh.ModifyRequest(tc.RequestMods...)
 	if modErr != nil {
 		t.Errorf("request: %s \n%s", tc.Name, modErr.Error())
-		return
+		return nil
 	}
 	// run pre-flight "script"
 	if tc.PreFunc != nil {
 		preErr := tc.PreFunc.Apply(rh)
 		if preErr != nil {
 			t.Errorf("request: %s \nPre-request function failed: %s", tc.Name, preErr.Error())
-			return
+			return nil
 		}
 	}
 	// pre-flight checks
@@ -96,26 +106,26 @@ func TestRequest(t *testing.T, tc *TestConfig) {
 	runErr := rh.RunRequest()
 	if runErr != nil {
 		t.Errorf("request: %s\nRequest execution failed: %s\n%s", tc.Name, runErr.Error(), requestDiagnostics(rh))
-		return
+		return nil
 	}
 	// run response body modifications
 	modBodyErr := rh.ModifyResponseBody(tc.ResponseBodyMods...)
 	if modBodyErr != nil {
 		t.Errorf("request: %s\n%s\n%s", tc.Name, modBodyErr.Error(), requestDiagnostics(rh))
-		return
+		return nil
 	}
 	// run response modfications
 	modRespErr := rh.ModifyResponse(tc.ResponseMods...)
 	if modRespErr != nil {
 		t.Errorf("request: %s\n%s\n%s", tc.Name, modRespErr.Error(), requestDiagnostics(rh))
-		return
+		return nil
 	}
 	// run post-flight "script"
 	if tc.PostFunc != nil {
 		postErr := tc.PostFunc.Apply(rh)
 		if postErr != nil {
 			t.Errorf("request: %s \nPost-request function failed: %s", tc.Name, postErr.Error())
-			return
+			return nil
 		}
 	}
 	// post-flight checks
@@ -125,4 +135,5 @@ func TestRequest(t *testing.T, tc *TestConfig) {
 			tt.Statement(t, rh)
 		})
 	}
+	return rh
 }

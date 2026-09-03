@@ -55,6 +55,37 @@ PostTestStatements: []goe2e.TestStatement{
 
 `WithHeaders`, `WithContentType`, `WithBearerToken`, `WithBasicAuth`, and `WithCookies` compose in `RequestMods`. `WithTimeToFirstByte` attaches an `httptrace` timing trace to the request.
 
+## Stateful sessions
+
+`TestRequest` remains the concise API for one request. For a multi-step workflow, create a `Session` for each browser or user actor and call `Session.TestRequest`. A session clones the supplied `http.Client`, preserving its transport, and creates a cookie jar when the client does not already have one. It is not safe for concurrent use.
+
+```go
+session, err := goe2e.NewSession(server.Client(), goe2e.WithDefaults(goe2e.TestConfig{
+	RequestMods: []goe2e.RequestModifier{
+		goe2e.WithHeaders(goe2e.D{"X-User-ID": userID}),
+	},
+}))
+if err != nil {
+	t.Fatal(err)
+}
+
+created := session.TestRequest(t, &goe2e.TestConfig{
+	SpecOpts: []goe2e.SpecOption{
+		goe2e.WithMethod(http.MethodPost),
+		goe2e.WithURL(server.URL + "/resources"),
+		goe2e.WithJSON(payload),
+	},
+})
+if created == nil {
+	t.Fatal("request failed")
+}
+id, err := created.ResponseJSONPointerString("/id")
+```
+
+Session defaults merge before request-specific values. Request-specific `Context` and non-zero `Timeout` override defaults; request-specific modifiers, statements, and response modifiers run after defaults. Default and request diagnostics both run, in that order. The request's `Name` and `SpecOpts` are always request-specific. Do not set `TestConfig.HTTPClient` when calling `Session.TestRequest`: the session-owned client is required to preserve its cookie state.
+
+`ResponseJSONPointer` returns an `any` value selected by an RFC 6901 pointer; `ResponseJSONPointerString` additionally verifies that the selected value is a string.
+
 ## Migration notes
 
 ### Import from the module root

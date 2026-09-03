@@ -30,6 +30,7 @@
 - [x] Add a complete, runnable example for a standard `net/http` handler.
 - [x] Add a complete Gin example without making it a library dependency.
 - [x] Exercise HTTP, HTTPS, headers, query parameters, malformed JSON, and handler panics with `httptest.NewTestServer`.
+- [x] Provide stateful per-actor sessions for cookie-backed, multi-request workflows.
 - [x] Document when to use the in-memory client versus a real running service.
 - [x] Offer opt-in structured, redacted request/response diagnostics.
 

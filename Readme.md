@@ -144,6 +144,81 @@ func TestPersonPost(t *testing.T) {
 
 For a complete, runnable example using only `net/http`, see [examples/standard_http_test.go](examples/standard_http_test.go).
 
+### Multi-step workflows
+
+Use a `Session` when one test actor makes multiple requests. It keeps the supplied client's transport and cookie jar, so a session created from `httptest.NewTestServer(t).Client()` remains in-memory and carries cookies between calls. Create one session per browser or user actor.
+
+```go
+alice, err := goe2e.NewSession(server.Client(),
+	goe2e.WithDefaults(goe2e.TestConfig{
+		RequestMods: []goe2e.RequestModifier{
+			goe2e.WithHeaders(goe2e.D{"X-User-ID": aliceID}),
+		},
+	}),
+)
+if err != nil {
+	t.Fatal(err)
+}
+
+created := alice.TestRequest(t, &goe2e.TestConfig{
+	Name: "create interest request",
+	SpecOpts: []goe2e.SpecOption{
+		goe2e.WithMethod(http.MethodPost),
+		goe2e.WithURL(server.URL + "/interest-requests/" + bobID),
+		goe2e.WithJSON(map[string]string{"message": "Hello"}),
+	},
+	PostTestStatements: []goe2e.TestStatement{
+		goe2e.AssertStatusCode(http.StatusCreated),
+	},
+})
+if created == nil {
+	t.Fatal("create interest request failed")
+}
+requestID, err := created.ResponseJSONPointerString("/id")
+if err != nil {
+	t.Fatal(err)
+}
+
+bob, err := goe2e.NewSession(server.Client(), goe2e.WithDefaults(goe2e.TestConfig{
+	RequestMods: []goe2e.RequestModifier{
+		goe2e.WithHeaders(goe2e.D{"X-User-ID": bobID}),
+	},
+}))
+if err != nil {
+	t.Fatal(err)
+}
+bob.TestRequest(t, &goe2e.TestConfig{
+	Name: "accept interest request",
+	SpecOpts: []goe2e.SpecOption{
+		goe2e.WithMethod(http.MethodPost),
+		goe2e.WithURL(server.URL + "/interest-requests/" + requestID + "/response"),
+		goe2e.WithJSON(map[string]string{"action": "accepted"}),
+	},
+	PostTestStatements: []goe2e.TestStatement{
+		goe2e.AssertStatusCode(http.StatusOK),
+	},
+})
+```
+
+`Session.TestRequest` uses the session-owned client, so do not set `TestConfig.HTTPClient` for those calls. Sessions are not safe for concurrent use; share one deliberately only when testing session switching or cookie-precedence behavior.
+
+For browser-style cookie tests, make the sign-in request and the follow-up request through the same session:
+
+```go
+server := httptest.NewTestServer(t, app.Handler()) // /sign-in sets a session cookie
+browser, err := goe2e.NewSession(server.Client())
+if err != nil {
+	t.Fatal(err)
+}
+browser.TestRequest(t, &goe2e.TestConfig{SpecOpts: []goe2e.SpecOption{
+	goe2e.WithMethod(http.MethodPost), goe2e.WithURL(server.URL + "/sign-in"),
+}})
+account := browser.TestRequest(t, &goe2e.TestConfig{SpecOpts: []goe2e.SpecOption{
+	goe2e.WithURL(server.URL + "/account"),
+}}) // receives the stored cookie automatically
+_ = account
+```
+
 ### Gin without a running port
 
 Gin's `*gin.Engine` implements `http.Handler`, so it can be passed straight to `httptest.NewTestServer`. This keeps Gin an application dependency only; `goe2e` does not depend on it.
