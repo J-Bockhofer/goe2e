@@ -47,24 +47,26 @@
 ```go
 server := httptest.NewTestServer(t, app.Router())
 
-goe2e.TestRequest(t, &goe2e.TestConfig{
-	Name:       "POST /persons",
+goe2e.TestRequest(t, goe2e.TestConfig{
 	HTTPClient: server.Client(),
-	SpecOpts: []goe2e.SpecOption{
+	Request: goe2e.RequestConfig{
+		Name: "POST /persons",
+		SpecOpts: []goe2e.SpecOption{
 		goe2e.WithMethod(http.MethodPost),
 		goe2e.WithURL("https://app.test/persons"),
 		goe2e.WithJSON(person),
 	},
-	PreTestStatements: []goe2e.TestStatement{
+		PreTestStatements: []goe2e.TestStatement{
 		goe2e.AssertRequestMethod(http.MethodPost),
 		goe2e.AssertRequestHeader("Content-Type", goe2e.ContentHeaderJSON),
 		goe2e.AssertRequestJSONEquals(`{"name":"John"}`),
 	},
-	PostTestStatements: []goe2e.TestStatement{
+		PostTestStatements: []goe2e.TestStatement{
 		goe2e.AssertStatusCode(http.StatusCreated),
 		goe2e.AssertResponseHeader("Location", "/persons/42"),
 		goe2e.AssertResponseJSONEquals(`{"id":"42","name":"John"}`),
 		goe2e.AssertResponseJSONPointer("/id", "42"),
+		},
 	},
 })
 ```

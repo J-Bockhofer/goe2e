@@ -39,7 +39,7 @@ func TestSessionPersistsCookiesWithoutMutatingCallerClient(t *testing.T) {
 	if client.Jar != nil {
 		t.Fatal("test server client unexpectedly has a cookie jar")
 	}
-	session, err := NewSession(client)
+	session, err := NewSession(SessionConfig{HTTPClient: client})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,13 +50,13 @@ func TestSessionPersistsCookiesWithoutMutatingCallerClient(t *testing.T) {
 		t.Fatal("session client has no cookie jar")
 	}
 
-	if handler := session.TestRequest(t, &TestConfig{
+	if handler := session.TestRequest(t, RequestConfig{
 		Name:     "sign in",
 		SpecOpts: []SpecOption{WithURL(server.URL + "/sign-in")},
 	}); handler == nil {
 		t.Fatal("sign-in request failed")
 	}
-	account := session.TestRequest(t, &TestConfig{
+	account := session.TestRequest(t, RequestConfig{
 		Name:     "load account",
 		SpecOpts: []SpecOption{WithURL(server.URL + "/account")},
 	})
@@ -71,11 +71,11 @@ func TestSessionPreservesSuppliedClientTransport(t *testing.T) {
 		called = true
 		return &http.Response{StatusCode: http.StatusNoContent, Body: http.NoBody}, nil
 	})}
-	session, err := NewSession(client)
+	session, err := NewSession(SessionConfig{HTTPClient: client})
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := session.TestRequest(t, &TestConfig{SpecOpts: []SpecOption{WithURL("https://service.test/health")}})
+	handler := session.TestRequest(t, RequestConfig{SpecOpts: []SpecOption{WithURL("https://service.test/health")}})
 	if handler == nil || !called {
 		t.Fatal("session did not use the supplied client transport")
 	}
@@ -92,7 +92,7 @@ func TestSessionMergesDefaultsInLifecycleOrder(t *testing.T) {
 		_, _ = fmt.Fprint(w, "response")
 	}))
 
-	session, err := NewSession(server.Client(), WithDefaults(TestConfig{
+	session, err := NewSession(SessionConfig{HTTPClient: server.Client(), Defaults: RequestConfig{
 		RequestMods: []RequestModifier{func(request *http.Request) error {
 			record("default request mod")
 			request.Header.Set("X-Actor", "default")
@@ -120,11 +120,11 @@ func TestSessionMergesDefaultsInLifecycleOrder(t *testing.T) {
 		PostTestStatements: []TestStatement{{Description: "default post", Statement: func(*testing.T, *RequestHandler) {
 			record("default post statement")
 		}}},
-	}))
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := session.TestRequest(t, &TestConfig{
+	handler := session.TestRequest(t, RequestConfig{
 		Name:     "merged lifecycle",
 		SpecOpts: []SpecOption{WithURL(server.URL)},
 		RequestMods: []RequestModifier{func(request *http.Request) error {
@@ -180,15 +180,15 @@ func TestSessionContextAndTimeoutPrecedence(t *testing.T) {
 	client := &http.Client{Transport: sessionRoundTripper(func(request *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: http.StatusNoContent, Body: http.NoBody}, nil
 	})}
-	session, err := NewSession(client, WithDefaults(TestConfig{Context: defaultContext, Timeout: time.Second}))
+	session, err := NewSession(SessionConfig{HTTPClient: client, Defaults: RequestConfig{Context: defaultContext, Timeout: time.Second}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defaultHandler := session.TestRequest(t, &TestConfig{SpecOpts: []SpecOption{WithURL("https://service.test/default")}})
+	defaultHandler := session.TestRequest(t, RequestConfig{SpecOpts: []SpecOption{WithURL("https://service.test/default")}})
 	if defaultHandler == nil || defaultHandler.Request().Context().Value(key) != "default" || defaultHandler.Timeout != time.Second {
 		t.Fatal("session defaults were not applied")
 	}
-	requestHandler := session.TestRequest(t, &TestConfig{
+	requestHandler := session.TestRequest(t, RequestConfig{
 		Context:  requestContext,
 		Timeout:  2 * time.Second,
 		SpecOpts: []SpecOption{WithURL("https://service.test/request")},
@@ -218,17 +218,17 @@ func TestSessionDiagnosticsRunInOrderAndRemainSafe(t *testing.T) {
 			}
 		}
 	}
-	session, err := NewSession(server.Client(), WithDefaults(TestConfig{
+	session, err := NewSession(SessionConfig{HTTPClient: server.Client(), Defaults: RequestConfig{
 		OnDiagnostic: checkDiagnostic("default"),
 		RequestMods: []RequestModifier{func(request *http.Request) error {
 			request.Header.Set("Authorization", "Bearer secret")
 			return nil
 		}},
-	}))
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if handler := session.TestRequest(t, &TestConfig{
+	if handler := session.TestRequest(t, RequestConfig{
 		OnDiagnostic: checkDiagnostic("request"),
 		SpecOpts:     []SpecOption{WithURL(server.URL)},
 	}); handler == nil {
@@ -264,10 +264,9 @@ func TestResponseJSONPointerExtraction(t *testing.T) {
 }
 
 func TestPackageAndSessionTestRequestShareLifecycle(t *testing.T) {
-	newConfig := func(events *[]string, client *http.Client) *TestConfig {
-		return &TestConfig{
-			HTTPClient: client,
-			SpecOpts:   []SpecOption{WithURL("https://service.test/health")},
+	newRequest := func(events *[]string) RequestConfig {
+		return RequestConfig{
+			SpecOpts: []SpecOption{WithURL("https://service.test/health")},
 			RequestMods: []RequestModifier{func(*http.Request) error {
 				*events = append(*events, "request mod")
 				return nil
@@ -286,14 +285,13 @@ func TestPackageAndSessionTestRequestShareLifecycle(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusNoContent, Body: http.NoBody}, nil
 	})}
 	var packageEvents []string
-	TestRequest(t, newConfig(&packageEvents, client))
-	session, err := NewSession(client)
+	TestRequest(t, TestConfig{HTTPClient: client, Request: newRequest(&packageEvents)})
+	session, err := NewSession(SessionConfig{HTTPClient: client})
 	if err != nil {
 		t.Fatal(err)
 	}
 	var sessionEvents []string
-	config := newConfig(&sessionEvents, nil)
-	if handler := session.TestRequest(t, config); handler == nil {
+	if handler := session.TestRequest(t, newRequest(&sessionEvents)); handler == nil {
 		t.Fatal("session request failed")
 	}
 	if !reflect.DeepEqual(packageEvents, sessionEvents) {

@@ -12,18 +12,31 @@
 
 Use `PreTestStatements` for request assertions and `PostTestStatements` for response assertions. Each item is a `TestStatement`, so custom domain-specific checks remain first-class.
 
-## `TestConfig`
+## `RequestConfig`
 
 | Field | Purpose |
 | --- | --- |
 | `SpecOpts` | Method, URL, body, and JSON request construction. |
 | `RequestMods` | Headers, authentication, cookies, and request tracing. |
-| `HTTPClient` | Optional client used to execute the request; use `httptest.NewTestServer(t, handler).Client()` for in-memory tests. |
 | `Context`, `Timeout` | Request-scoped cancellation controls. A timeout does not mutate a shared client. |
 | `PreFunc`, `PostFunc` | Custom lifecycle hooks. |
 | `PreTestStatements`, `PostTestStatements` | Ordered lifecycle-aware assertions. |
 | `ResponseBodyMods`, `ResponseMods` | Ordered transformations of the received response. |
 | `OnDiagnostic` | Optional safe, structured request summary for logging or metrics. |
+
+## `TestConfig`
+
+`TestConfig` supplies the execution client and a `RequestConfig`:
+
+```go
+goe2e.TestRequest(t, goe2e.TestConfig{
+	HTTPClient: server.Client(),
+	Request: goe2e.RequestConfig{
+		Name:     "create person",
+		SpecOpts: []goe2e.SpecOption{goe2e.WithURL(server.URL + "/persons")},
+	},
+})
+```
 
 ## Common statement factories
 
@@ -60,16 +73,19 @@ PostTestStatements: []goe2e.TestStatement{
 `TestRequest` remains the concise API for one request. For a multi-step workflow, create a `Session` for each browser or user actor and call `Session.TestRequest`. A session clones the supplied `http.Client`, preserving its transport, and creates a cookie jar when the client does not already have one. It is not safe for concurrent use.
 
 ```go
-session, err := goe2e.NewSession(server.Client(), goe2e.WithDefaults(goe2e.TestConfig{
-	RequestMods: []goe2e.RequestModifier{
-		goe2e.WithHeaders(goe2e.D{"X-User-ID": userID}),
+session, err := goe2e.NewSession(goe2e.SessionConfig{
+	HTTPClient: server.Client(),
+	Defaults: goe2e.RequestConfig{
+		RequestMods: []goe2e.RequestModifier{
+			goe2e.WithHeaders(goe2e.D{"X-User-ID": userID}),
+		},
 	},
-}))
+})
 if err != nil {
 	t.Fatal(err)
 }
 
-created := session.TestRequest(t, &goe2e.TestConfig{
+created := session.TestRequest(t, goe2e.RequestConfig{
 	SpecOpts: []goe2e.SpecOption{
 		goe2e.WithMethod(http.MethodPost),
 		goe2e.WithURL(server.URL + "/resources"),
@@ -82,7 +98,7 @@ if created == nil {
 id, err := created.ResponseJSONPointerString("/id")
 ```
 
-Session defaults merge before request-specific values. Request-specific `Context` and non-zero `Timeout` override defaults; request-specific modifiers, statements, and response modifiers run after defaults. Default and request diagnostics both run, in that order. The request's `Name` and `SpecOpts` are always request-specific. Do not set `TestConfig.HTTPClient` when calling `Session.TestRequest`: the session-owned client is required to preserve its cookie state.
+Session defaults merge before request-specific values. Request-specific `Context` and non-zero `Timeout` override defaults; request-specific modifiers, statements, and response modifiers run after defaults. Default and request diagnostics both run, in that order. `Defaults.Name` and `Defaults.SpecOpts` must be empty because both always belong to an individual request. Set a custom cookie jar with `SessionConfig.CookieJar`; otherwise the session uses the supplied client's jar or creates one.
 
 `ResponseJSONPointer` returns an `any` value selected by an RFC 6901 pointer; `ResponseJSONPointerString` additionally verifies that the selected value is a string.
 
@@ -100,6 +116,26 @@ goe2e "github.com/J-Bockhofer/goe2e/pkg"
 goe2e "github.com/J-Bockhofer/goe2e"
 ```
 
+### Separate request definitions from execution clients
+
+`TestConfig` now contains `HTTPClient` and a `RequestConfig`. Use `RequestConfig` directly with `Session.TestRequest`:
+
+```go
+// Before
+goe2e.TestRequest(t, &goe2e.TestConfig{
+	HTTPClient: server.Client(),
+	SpecOpts:   []goe2e.SpecOption{goe2e.WithURL(server.URL + "/health")},
+})
+
+// After
+goe2e.TestRequest(t, goe2e.TestConfig{
+	HTTPClient: server.Client(),
+	Request: goe2e.RequestConfig{
+		SpecOpts: []goe2e.SpecOption{goe2e.WithURL(server.URL + "/health")},
+	},
+})
+```
+
 ### Move from externally running tests to in-memory handler tests
 
 Keep the same request configuration and provide the server client:
@@ -108,7 +144,7 @@ Keep the same request configuration and provide the server client:
 server := httptest.NewTestServer(t, app.Handler())
 
 config.HTTPClient = server.Client()
-config.SpecOpts = append(config.SpecOpts,
+config.Request.SpecOpts = append(config.Request.SpecOpts,
 	goe2e.WithURL("https://app.test/persons"),
 )
 ```

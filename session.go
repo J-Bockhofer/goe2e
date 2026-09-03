@@ -7,59 +7,37 @@ import (
 	"testing"
 )
 
+// SessionConfig configures a stateful HTTP Session.
+type SessionConfig struct {
+	HTTPClient *http.Client
+	CookieJar  http.CookieJar
+	Defaults   RequestConfig
+}
+
 // Session represents one stateful HTTP actor. It preserves the client's transport and cookie jar
 // across requests. A Session is not safe for concurrent use.
 type Session struct {
 	client   *http.Client
-	defaults TestConfig
-}
-
-type sessionConfig struct {
-	defaults TestConfig
-	jar      http.CookieJar
-}
-
-// SessionOption configures a Session.
-type SessionOption func(*sessionConfig) error
-
-// WithCookieJar sets the cookie jar used by a Session.
-func WithCookieJar(jar http.CookieJar) SessionOption {
-	return func(config *sessionConfig) error {
-		if jar == nil {
-			return fmt.Errorf("session cookie jar must not be nil")
-		}
-		config.jar = jar
-		return nil
-	}
-}
-
-// WithDefaults sets reusable TestConfig values for a Session. Request specification options and
-// HTTPClient are request-specific and are not inherited from session defaults.
-func WithDefaults(defaults TestConfig) SessionOption {
-	return func(config *sessionConfig) error {
-		config.defaults = cloneTestConfig(defaults)
-		return nil
-	}
+	defaults RequestConfig
 }
 
 // NewSession creates a stateful client for one HTTP actor. It copies the supplied client so the
-// caller's client is not mutated. A nil client uses a copy of http.DefaultClient.
-func NewSession(client *http.Client, options ...SessionOption) (*Session, error) {
+// caller's client is not mutated. CookieJar overrides the client's jar; when neither is supplied,
+// the Session creates a new jar. A nil HTTPClient uses a copy of http.DefaultClient.
+func NewSession(config SessionConfig) (*Session, error) {
+	if config.Defaults.Name != "" {
+		return nil, fmt.Errorf("session default request name must be empty")
+	}
+	if len(config.Defaults.SpecOpts) != 0 {
+		return nil, fmt.Errorf("session default request SpecOpts must be empty")
+	}
+	client := config.HTTPClient
 	if client == nil {
 		client = http.DefaultClient
 	}
 	clientCopy := *client
-	config := sessionConfig{}
-	for _, option := range options {
-		if option == nil {
-			return nil, fmt.Errorf("session option must not be nil")
-		}
-		if err := option(&config); err != nil {
-			return nil, err
-		}
-	}
-	if config.jar != nil {
-		clientCopy.Jar = config.jar
+	if config.CookieJar != nil {
+		clientCopy.Jar = config.CookieJar
 	} else if clientCopy.Jar == nil {
 		jar, err := cookiejar.New(nil)
 		if err != nil {
@@ -67,35 +45,22 @@ func NewSession(client *http.Client, options ...SessionOption) (*Session, error)
 		}
 		clientCopy.Jar = jar
 	}
-	return &Session{client: &clientCopy, defaults: config.defaults}, nil
+	return &Session{client: &clientCopy, defaults: cloneRequestConfig(config.Defaults)}, nil
 }
 
-// TestRequest executes config using the Session's persistent client. HTTPClient must not be set
-// on config because it would bypass the Session's cookie jar and transport state. It returns nil
-// when setup or request execution fails.
-func (s *Session) TestRequest(t *testing.T, config *TestConfig) *RequestHandler {
+// TestRequest executes request using the Session's persistent client. It returns nil when setup
+// or request execution fails.
+func (s *Session) TestRequest(t *testing.T, request RequestConfig) *RequestHandler {
 	if s == nil {
 		t.Error("session must not be nil")
 		return nil
 	}
-	if config == nil {
-		t.Error("session test request configuration must not be nil")
-		return nil
-	}
-	if config.HTTPClient != nil {
-		t.Error("TestConfig.HTTPClient must not be set when calling Session.TestRequest; the client belongs to the Session")
-		return nil
-	}
-	merged := mergeSessionTestConfig(s.defaults, *config)
-	merged.HTTPClient = s.client
-	return runTestRequest(t, &merged)
+	merged := mergeSessionRequestConfig(s.defaults, request)
+	return runTestRequest(t, TestConfig{HTTPClient: s.client, Request: merged})
 }
 
-func mergeSessionTestConfig(defaults, request TestConfig) TestConfig {
-	merged := cloneTestConfig(request)
-	merged.Name = request.Name
-	merged.HTTPClient = nil
-	merged.SpecOpts = append([]SpecOption(nil), request.SpecOpts...)
+func mergeSessionRequestConfig(defaults, request RequestConfig) RequestConfig {
+	merged := cloneRequestConfig(request)
 	if merged.Context == nil {
 		merged.Context = defaults.Context
 	}
@@ -113,10 +78,9 @@ func mergeSessionTestConfig(defaults, request TestConfig) TestConfig {
 	return merged
 }
 
-func cloneTestConfig(config TestConfig) TestConfig {
-	return TestConfig{
+func cloneRequestConfig(config RequestConfig) RequestConfig {
+	return RequestConfig{
 		Name:               config.Name,
-		HTTPClient:         config.HTTPClient,
 		Context:            config.Context,
 		Timeout:            config.Timeout,
 		OnDiagnostic:       config.OnDiagnostic,

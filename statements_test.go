@@ -17,28 +17,30 @@ func TestLifecycleStatementHelpers(t *testing.T) {
 		_, _ = fmt.Fprint(w, `{"name":"John","id":"42"}`)
 	}))
 
-	goe2e.TestRequest(t, &goe2e.TestConfig{
-		Name:       "POST /persons",
+	goe2e.TestRequest(t, goe2e.TestConfig{
 		HTTPClient: server.Client(),
-		SpecOpts: []goe2e.SpecOption{
-			goe2e.WithMethod(http.MethodPost),
-			goe2e.WithURL("https://service.test/persons?include=address"),
-		},
-		RequestMods: []goe2e.RequestModifier{
-			goe2e.WithContentType(goe2e.ContentHeaderJSON),
-		},
-		PreTestStatements: []goe2e.TestStatement{
-			goe2e.AssertRequestMethod(http.MethodPost),
-			goe2e.AssertRequestPath("/persons"),
-			goe2e.AssertRequestQuery("include", "address"),
-			goe2e.AssertRequestHeader("Content-Type", goe2e.ContentHeaderJSON),
-		},
-		PostTestStatements: []goe2e.TestStatement{
-			goe2e.AssertStatusCode(http.StatusCreated),
-			goe2e.AssertResponseHeader("Location", "/persons/42"),
-			goe2e.AssertResponseBodyContains(`"name":"John"`),
-			goe2e.AssertResponseBodyEquals(`{"name":"John","id":"42"}`),
-			goe2e.AssertResponseJSONEquals(`{"id":"42","name":"John"}`),
+		Request: goe2e.RequestConfig{
+			Name: "POST /persons",
+			SpecOpts: []goe2e.SpecOption{
+				goe2e.WithMethod(http.MethodPost),
+				goe2e.WithURL("https://service.test/persons?include=address"),
+			},
+			RequestMods: []goe2e.RequestModifier{
+				goe2e.WithContentType(goe2e.ContentHeaderJSON),
+			},
+			PreTestStatements: []goe2e.TestStatement{
+				goe2e.AssertRequestMethod(http.MethodPost),
+				goe2e.AssertRequestPath("/persons"),
+				goe2e.AssertRequestQuery("include", "address"),
+				goe2e.AssertRequestHeader("Content-Type", goe2e.ContentHeaderJSON),
+			},
+			PostTestStatements: []goe2e.TestStatement{
+				goe2e.AssertStatusCode(http.StatusCreated),
+				goe2e.AssertResponseHeader("Location", "/persons/42"),
+				goe2e.AssertResponseBodyContains(`"name":"John"`),
+				goe2e.AssertResponseBodyEquals(`{"name":"John","id":"42"}`),
+				goe2e.AssertResponseJSONEquals(`{"id":"42","name":"John"}`),
+			},
 		},
 	})
 }

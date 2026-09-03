@@ -27,20 +27,22 @@ func TestAssertRequestJSONEqualsRestoresRequestBody(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 	}))
 
-	goe2e.TestRequest(t, &goe2e.TestConfig{
-		Name:       "POST /persons with JSON body",
+	goe2e.TestRequest(t, goe2e.TestConfig{
 		HTTPClient: server.Client(),
-		SpecOpts: []goe2e.SpecOption{
-			goe2e.WithMethod(http.MethodPost),
-			goe2e.WithURL("https://service.test/persons"),
-			goe2e.WithJSON(goe2e.H{"name": "John", "age": 32}),
-		},
-		PreTestStatements: []goe2e.TestStatement{
-			goe2e.AssertRequestBodyEquals(`{"age":32,"name":"John"}`),
-			goe2e.AssertRequestJSONEquals(`{"age":32,"name":"John"}`),
-		},
-		PostTestStatements: []goe2e.TestStatement{
-			goe2e.AssertStatusCode(http.StatusCreated),
+		Request: goe2e.RequestConfig{
+			Name: "POST /persons with JSON body",
+			SpecOpts: []goe2e.SpecOption{
+				goe2e.WithMethod(http.MethodPost),
+				goe2e.WithURL("https://service.test/persons"),
+				goe2e.WithJSON(goe2e.H{"name": "John", "age": 32}),
+			},
+			PreTestStatements: []goe2e.TestStatement{
+				goe2e.AssertRequestBodyEquals(`{"age":32,"name":"John"}`),
+				goe2e.AssertRequestJSONEquals(`{"age":32,"name":"John"}`),
+			},
+			PostTestStatements: []goe2e.TestStatement{
+				goe2e.AssertStatusCode(http.StatusCreated),
+			},
 		},
 	})
 }

@@ -83,7 +83,7 @@ func TestPersonPost(t *testing.T) {
 		Name: "john",
 		Age:  32,
 	}
-	rc := &goe2e.TestConfig{
+	rc := goe2e.TestConfig{Request: goe2e.RequestConfig{
 		Name: "POST /persons",
 		SpecOpts: []goe2e.SpecOption{
 			goe2e.WithMethod(http.MethodPost),
@@ -106,7 +106,7 @@ func TestPersonPost(t *testing.T) {
 				assert.Equal(t, http.StatusAccepted, r.Response.StatusCode)
 			}},
 		},
-	}
+	}}
 	goe2e.TestRequest(t, rc)
 }
 ```
@@ -125,16 +125,18 @@ For deterministic tests without a running application, create an in-memory test 
 func TestPersonPost(t *testing.T) {
 	server := httptest.NewTestServer(t, app.Router())
 
-	goe2e.TestRequest(t, &goe2e.TestConfig{
-		Name:       "POST /persons",
+	goe2e.TestRequest(t, goe2e.TestConfig{
 		HTTPClient: server.Client(),
-		SpecOpts: []goe2e.SpecOption{
+		Request: goe2e.RequestConfig{
+			Name: "POST /persons",
+			SpecOpts: []goe2e.SpecOption{
 			goe2e.WithMethod(http.MethodPost),
 			goe2e.WithURL("https://service.test/persons"),
 			goe2e.WithJSON(&model.Person{Name: "john", Age: 32}),
 		},
-		PostTestStatements: []goe2e.TestStatement{
+			PostTestStatements: []goe2e.TestStatement{
 			{"status 202", goe2e.TestStatusCode(http.StatusAccepted)},
+			},
 		},
 	})
 }
@@ -149,18 +151,17 @@ For a complete, runnable example using only `net/http`, see [examples/standard_h
 Use a `Session` when one test actor makes multiple requests. It keeps the supplied client's transport and cookie jar, so a session created from `httptest.NewTestServer(t).Client()` remains in-memory and carries cookies between calls. Create one session per browser or user actor.
 
 ```go
-alice, err := goe2e.NewSession(server.Client(),
-	goe2e.WithDefaults(goe2e.TestConfig{
-		RequestMods: []goe2e.RequestModifier{
-			goe2e.WithHeaders(goe2e.D{"X-User-ID": aliceID}),
-		},
-	}),
-)
+alice, err := goe2e.NewSession(goe2e.SessionConfig{
+	HTTPClient: server.Client(),
+	Defaults: goe2e.RequestConfig{RequestMods: []goe2e.RequestModifier{
+		goe2e.WithHeaders(goe2e.D{"X-User-ID": aliceID}),
+	}},
+})
 if err != nil {
 	t.Fatal(err)
 }
 
-created := alice.TestRequest(t, &goe2e.TestConfig{
+created := alice.TestRequest(t, goe2e.RequestConfig{
 	Name: "create interest request",
 	SpecOpts: []goe2e.SpecOption{
 		goe2e.WithMethod(http.MethodPost),
@@ -179,15 +180,16 @@ if err != nil {
 	t.Fatal(err)
 }
 
-bob, err := goe2e.NewSession(server.Client(), goe2e.WithDefaults(goe2e.TestConfig{
-	RequestMods: []goe2e.RequestModifier{
+bob, err := goe2e.NewSession(goe2e.SessionConfig{
+	HTTPClient: server.Client(),
+	Defaults: goe2e.RequestConfig{RequestMods: []goe2e.RequestModifier{
 		goe2e.WithHeaders(goe2e.D{"X-User-ID": bobID}),
-	},
-}))
+	}},
+})
 if err != nil {
 	t.Fatal(err)
 }
-bob.TestRequest(t, &goe2e.TestConfig{
+bob.TestRequest(t, goe2e.RequestConfig{
 	Name: "accept interest request",
 	SpecOpts: []goe2e.SpecOption{
 		goe2e.WithMethod(http.MethodPost),
@@ -200,20 +202,20 @@ bob.TestRequest(t, &goe2e.TestConfig{
 })
 ```
 
-`Session.TestRequest` uses the session-owned client, so do not set `TestConfig.HTTPClient` for those calls. Sessions are not safe for concurrent use; share one deliberately only when testing session switching or cookie-precedence behavior.
+`Session.TestRequest` accepts `RequestConfig`, so the session-owned client cannot be accidentally replaced. Sessions are not safe for concurrent use; share one deliberately only when testing session switching or cookie-precedence behavior.
 
 For browser-style cookie tests, make the sign-in request and the follow-up request through the same session:
 
 ```go
 server := httptest.NewTestServer(t, app.Handler()) // /sign-in sets a session cookie
-browser, err := goe2e.NewSession(server.Client())
+browser, err := goe2e.NewSession(goe2e.SessionConfig{HTTPClient: server.Client()})
 if err != nil {
 	t.Fatal(err)
 }
-browser.TestRequest(t, &goe2e.TestConfig{SpecOpts: []goe2e.SpecOption{
+browser.TestRequest(t, goe2e.RequestConfig{SpecOpts: []goe2e.SpecOption{
 	goe2e.WithMethod(http.MethodPost), goe2e.WithURL(server.URL + "/sign-in"),
 }})
-account := browser.TestRequest(t, &goe2e.TestConfig{SpecOpts: []goe2e.SpecOption{
+account := browser.TestRequest(t, goe2e.RequestConfig{SpecOpts: []goe2e.SpecOption{
 	goe2e.WithURL(server.URL + "/account"),
 }}) // receives the stored cookie automatically
 _ = account
@@ -236,20 +238,22 @@ func TestPersonPost(t *testing.T) {
 	})
 
 	server := httptest.NewTestServer(t, router)
-	goe2e.TestRequest(t, &goe2e.TestConfig{
-		Name:       "POST /persons",
+	goe2e.TestRequest(t, goe2e.TestConfig{
 		HTTPClient: server.Client(),
-		SpecOpts: []goe2e.SpecOption{
+		Request: goe2e.RequestConfig{
+			Name: "POST /persons",
+			SpecOpts: []goe2e.SpecOption{
 			goe2e.WithMethod(http.MethodPost),
 			goe2e.WithURL("https://app.test/persons"),
 			goe2e.WithJSON(model.Person{Name: "John", Age: 32}),
 		},
-		RequestMods: []goe2e.RequestModifier{
+			RequestMods: []goe2e.RequestModifier{
 			goe2e.WithContentType(goe2e.ContentHeaderJSON),
 		},
-		PostTestStatements: []goe2e.TestStatement{
+			PostTestStatements: []goe2e.TestStatement{
 			goe2e.AssertStatusCode(http.StatusCreated),
 			goe2e.AssertResponseJSONPointer("/name", "John"),
+			},
 		},
 	})
 }
@@ -259,7 +263,7 @@ func TestPersonPost(t *testing.T) {
 
 Use `httptest.NewTestServer` and `HTTPClient: server.Client()` when testing handlers, middleware, validation, and response contracts. It is deterministic, does not open a port, and routes the configured client to the test handler even when the request URL uses a readable hostname such as `https://app.test`.
 
-Omit `HTTPClient` when a test must reach a separately running service. This is appropriate for deployment configuration, DNS, real TLS/network behavior, or dependencies that cannot be represented by a local handler. Set `Context` or `Timeout` on `TestConfig` for an explicit cancellation boundary in those tests.
+Omit `HTTPClient` when a test must reach a separately running service. This is appropriate for deployment configuration, DNS, real TLS/network behavior, or dependencies that cannot be represented by a local handler. Set `Context` or `Timeout` on `RequestConfig` for an explicit cancellation boundary in those tests.
 
 ### Structured diagnostics
 

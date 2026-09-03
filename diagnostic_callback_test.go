@@ -20,16 +20,18 @@ func TestDiagnosticCallback(t *testing.T) {
 	}))
 
 	var received goe2e.RequestDiagnostic
-	goe2e.TestRequest(t, &goe2e.TestConfig{
-		Name:       "diagnostic callback",
+	goe2e.TestRequest(t, goe2e.TestConfig{
 		HTTPClient: server.Client(),
-		SpecOpts:   []goe2e.SpecOption{goe2e.WithURL("https://app.test/diagnostic")},
-		RequestMods: []goe2e.RequestModifier{
-			goe2e.WithBearerToken("secret-token"),
-			goe2e.WithContentType(goe2e.ContentHeaderJSON),
-		},
-		OnDiagnostic: func(diagnostic goe2e.RequestDiagnostic) {
-			received = diagnostic
+		Request: goe2e.RequestConfig{
+			Name:     "diagnostic callback",
+			SpecOpts: []goe2e.SpecOption{goe2e.WithURL("https://app.test/diagnostic")},
+			RequestMods: []goe2e.RequestModifier{
+				goe2e.WithBearerToken("secret-token"),
+				goe2e.WithContentType(goe2e.ContentHeaderJSON),
+			},
+			OnDiagnostic: func(diagnostic goe2e.RequestDiagnostic) {
+				received = diagnostic
+			},
 		},
 	})
 
